@@ -1,5 +1,6 @@
 // * Level-2 ---> Storing the User's Credentials into the DataBase in the Encrypted form with the help of mongoose-encryption module
-
+// * With Environment Variable (dotenv)
+require('dotenv').config()
 const express = require('express')
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
@@ -14,6 +15,7 @@ app.set('view engine','ejs')
 
 
 mongoose.connect("mongodb://localhost/userDB" , {useNewUrlParser:true , useUnifiedTopology: true})
+// console.log(process.env.SAMPLE_API_KEY);
 
 const userSchema = new mongoose.Schema({
     email : String,
@@ -23,7 +25,7 @@ const userSchema = new mongoose.Schema({
 // https://www.npmjs.com/package/mongoose-encryption#secret-string-instead-of-two-keys
 // https://www.npmjs.com/package/mongoose-encryption#encrypt-only-certain-fields
 
-const secret = "ThisisourLittlesecretkeywithEncryption."
+const secret = process.env.SECRET
 userSchema.plugin(encrypt, {secret : secret , encryptedFields : ['password']})
 
 const User = new mongoose.model('User',userSchema)
