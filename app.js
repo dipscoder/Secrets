@@ -1,9 +1,10 @@
-// * Level-1 ---> Storing the User's Credentials into the DataBase in the String Format
+// * Level-2 ---> Storing the User's Credentials into the DataBase in the Encrypted form with the help of mongoose-encryption module
 
 const express = require('express')
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
 const mongoose = require('mongoose');
+const encrypt = require('mongoose-encryption')
 
 const app = express()
 
@@ -18,6 +19,12 @@ const userSchema = new mongoose.Schema({
     email : String,
     password : String
 })
+
+// https://www.npmjs.com/package/mongoose-encryption#secret-string-instead-of-two-keys
+// https://www.npmjs.com/package/mongoose-encryption#encrypt-only-certain-fields
+
+const secret = "ThisisourLittlesecretkeywithEncryption."
+userSchema.plugin(encrypt, {secret : secret , encryptedFields : ['password']})
 
 const User = new mongoose.model('User',userSchema)
 
@@ -57,6 +64,7 @@ app.post('/login',(req,res) => {
         } else {
             if (foundUser) {
                 if (foundUser.password === password) {
+                    // console.log(foundUser.password);
                     res.render('secrets')
                 }
                 else {
