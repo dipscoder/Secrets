@@ -1,5 +1,7 @@
-// * Level-5 ---> Cookies and Session
+// * Level 6 - Google OAuth 2.0 Authentication
 // * Pasport ---> http://www.passportjs.org/
+//* Lecture ---> https://www.udemy.com/course/the-complete-web-development-bootcamp/learn/lecture/13559550#questions/13041128
+// http://www.passportjs.org/packages/passport-google-oauth20/
 require('dotenv').config()
 const express = require('express')
 const bodyParser = require('body-parser');
@@ -8,7 +10,8 @@ const mongoose = require('mongoose');
 const session = require('express-session')
 const passport = require('passport');
 const passportLocalMongoose = require('passport-local-mongoose');
-const { Passport } = require('passport');
+var GoogleStrategy = require('passport-google-oauth20').Strategy;
+var findOrCreate = require('mongoose-findorcreate')
 
 const app = express()
 
@@ -31,20 +34,58 @@ mongoose.set('useCreateIndex', true);
 
 const userSchema = new mongoose.Schema({
     email : String,
-    password : String
+    password : String,
+    googleId : String
 })
 userSchema.plugin(passportLocalMongoose)
+userSchema.plugin(findOrCreate)
 
 const User = new mongoose.model('User',userSchema)
 
 passport.use(User.createStrategy());
  
-passport.serializeUser(User.serializeUser());
-passport.deserializeUser(User.deserializeUser());
+// passport.serializeUser(User.serializeUser());
+// passport.deserializeUser(User.deserializeUser());
+
+passport.serializeUser(function(user, done) {
+    done(null, user.id);
+});  
+passport.deserializeUser(function(id, done) {
+    User.findById(id, function(err, user) {
+      done(err, user);
+    });
+});
+
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/google/secrets"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    //imp About findorCreate - https://stackoverflow.com/questions/20431049/what-is-function-user-findorcreate-doing-and-when-is-it-called-in-passport
+    // https://www.npmjs.com/package/mongoose-findorcreate
+    console.log(profile);
+    User.findOrCreate({ googleId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
 
 app.get('/',(req,res)=>{
     res.render('home')
 })
+
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile'] })
+);
+
+app.get('/auth/google/secrets', 
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  function(req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('/secrets');
+});
+
 app.get('/register',(req,res)=>{
     res.render('register')
 })
