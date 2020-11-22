@@ -1,4 +1,4 @@
-// * Level 6 - Google OAuth 2.0 Authentication
+// * Complete Project
 // * Pasport ---> http://www.passportjs.org/
 //* Lecture ---> https://www.udemy.com/course/the-complete-web-development-bootcamp/learn/lecture/13559550#questions/13041128
 // http://www.passportjs.org/packages/passport-google-oauth20/
@@ -25,7 +25,7 @@ app.use(bodyParser.urlencoded({extended : true}))
 app.set('view engine','ejs')
 
 app.use(session({
-    secret: process.env.SESSION_SECRET,      // TODO Put this in an env file afterwards
+    secret: process.env.SESSION_SECRET,      
     resave: false,
     saveUninitialized: false
 }))
@@ -42,7 +42,8 @@ const userSchema = new mongoose.Schema({
     password : String,
     googleId : String,
     facebookId: String,
-    name : String
+    name : String,
+    secret : Array
 })
 userSchema.plugin(passportLocalMongoose)
 userSchema.plugin(findOrCreate)
@@ -71,7 +72,7 @@ passport.use(new GoogleStrategy({
   function(accessToken, refreshToken, profile, cb) {
     // About findorCreate - https://stackoverflow.com/questions/20431049/what-is-function-user-findorcreate-doing-and-when-is-it-called-in-passport
     // https://www.npmjs.com/package/mongoose-findorcreate
-    console.log(profile);
+    // console.log(profile);
     User.findOrCreate({ name: profile.displayName ,googleId: profile.id }, function (err, user) {
       return cb(err, user);
     });
@@ -87,7 +88,7 @@ passport.use(new FacebookStrategy({
  },
 
  function(accessToken, refreshToken, profile, cb) {
-   console.log(profile);
+//    console.log(profile);
     User.findOrCreate({ name: profile.displayName , facebookId: profile.id }, function (err, user) {
       return cb(err, user);
     });
@@ -132,17 +133,48 @@ app.get('/login',(req,res)=>{
     res.render('login')
 })
 
+
+app.get('/secrets' , (req,res)=>{
+    User.find({ secret : {$ne : null} } , (err,foundUser) => {
+        if (err) {
+            console.log(err);
+        } else {
+            // console.log(foundUser);
+            res.render('secrets' , {userWithSecrets : foundUser})
+        }
+    })
+})
+
+app.get('/submit', (req,res) => {
+    if (req.isAuthenticated()) {
+        res.render('submit')
+    } else {
+        res.redirect('/login')
+    }
+})
+
+app.post('/submit', (req,res) =>{
+    const submittedSecret = req.body.secret
+    // console.log(req.user);
+    User.findById( req.user.id , (err,foundUser) => {
+        if (err) {
+            console.log(err);
+        } else {
+            if (foundUser) {
+                // foundUser.secret = submittedSecret
+                foundUser.secret.push(submittedSecret)
+                foundUser.save( () => {
+                    res.redirect('/secrets')
+                } )
+            }
+        }
+    })
+    
+})
+
 app.get('/logout',(req,res)=>{
     req.logout();
     res.redirect('/');
-})
-
-app.get('/secrets' , (req,res)=>{
-     if (req.isAuthenticated()) {
-         res.render('secrets')
-     } else {
-         res.redirect('/login')
-     }
 })
 
 app.post('/register',(req,res)=>{
